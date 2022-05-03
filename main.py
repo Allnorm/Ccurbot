@@ -49,7 +49,7 @@ logger_init()
 rate_interlayer = interlayer.Interlayer()
 bot = telebot.TeleBot(token())
 version = "0.1"
-build = "1"
+build = "2"
 logging.info("###CCURBOT {} build {} HAS BEEN STARTED###".format(version, build))
 
 
@@ -87,6 +87,11 @@ def query_text(inline_query):
                      "Требуется ввести 2 аргумента - количество, код исходной валюты")
         return
 
+    current_valute_amount = value_checker(interlayer.extract_arg(inline_query.query, 0))
+    if current_valute_amount is None:
+        inline_error(inline_query.id, "Неверный аргумент", "Первый аргумент не конвертируется в число")
+        return
+
     if interlayer.extract_arg(inline_query.query, 1) is None:
         inline_error(inline_query.id, "Недостаточно аргументов",
                      "Требуется ввести 2 аргумента - количество, код исходной валюты")
@@ -95,11 +100,6 @@ def query_text(inline_query):
     if interlayer.extract_arg(inline_query.query, 2) is not None:
         inline_error(inline_query.id, "Аргументов слишком много",
                      "Требуется ввести 2 аргумента - количество, код исходной валюты")
-        return
-
-    current_valute_amount = value_checker(interlayer.extract_arg(inline_query.query, 0))
-    if current_valute_amount is None:
-        inline_error(inline_query.id, "Неверный аргумент", "Первый аргумент не конвертируется в число")
         return
 
     current_valute_name = interlayer.extract_arg(inline_query.query, 1).upper()
