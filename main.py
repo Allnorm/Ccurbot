@@ -49,7 +49,7 @@ logger_init()
 rate_interlayer = interlayer.Interlayer()
 bot = telebot.TeleBot(token())
 version = "0.1"
-build = "2"
+build = "3"
 logging.info("###CCURBOT {} build {} HAS BEEN STARTED###".format(version, build))
 
 

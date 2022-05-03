@@ -11,6 +11,7 @@ from telebot import types
 
 
 def extract_arg(text, num):
+
     try:
         return str(text.split()[num])
     except IndexError:
@@ -18,10 +19,12 @@ def extract_arg(text, num):
 
 
 def rate_counter(current_valute_rate, current_valute_amount, next_valute_rate):
+
     return current_valute_rate / next_valute_rate * current_valute_amount
 
 
 class Interlayer:
+
     RATE_REPO = "http://www.cbr.ru/scripts/XML_daily.asp"
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y")
     current_valute_rate = 0
@@ -80,10 +83,17 @@ class Interlayer:
 
         if current_valute_name != "RUB":
             valute_result = round(rate_counter(self.current_valute_rate, current_valute_amount, 1), 2)
+
+            if valute_result >= 1:
+                if valute_result % int(valute_result) == 0:
+                    valute_result = int(valute_result)
+            elif valute_result == 0:  # Rounding crutch
+                valute_result = 0
+
             answer_list.append(types.InlineQueryResultArticle(
                 id="RUB",
                 title="RUB - Российский рубль",
-                description=valute_result,
+                description=str(valute_result),
                 input_message_content=types.InputTextMessageContent
                 (message_text="{} {} - это {} {}".format(current_valute_amount,
                                                          current_valute_name, valute_result, "RUB"))))
@@ -100,11 +110,13 @@ class Interlayer:
             if valute_result >= 1:
                 if valute_result % int(valute_result) == 0:
                     valute_result = int(valute_result)
+            elif valute_result == 0:  # Rounding crutch
+                valute_result = 0
 
             answer_list.append(types.InlineQueryResultArticle(
                 id=child.find("CharCode").text,
                 title="{} - {}".format(child.find("CharCode").text, format(child.find("Name").text)),
-                description=valute_result,
+                description=str(valute_result),
                 input_message_content=types.InputTextMessageContent
                 (message_text="{} {} - это {} {}".format(current_valute_amount,
                                                          current_valute_name, valute_result,
@@ -113,6 +125,7 @@ class Interlayer:
         return answer_list
 
     def hint(self, title, description):
+
         answer_list = [types.InlineQueryResultArticle(
             id="ERROR",
             title=title,
@@ -126,7 +139,6 @@ class Interlayer:
             input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))]
 
         for child in self.root:
-
             answer_list.append(types.InlineQueryResultArticle(
                 id=child.find("CharCode").text,
                 title=child.find("CharCode").text,
