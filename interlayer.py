@@ -87,16 +87,22 @@ class Interlayer:
             if valute_result >= 1:
                 if valute_result % int(valute_result) == 0:
                     valute_result = int(valute_result)
-            elif valute_result == 0:  # Rounding crutch
-                valute_result = 0
 
-            answer_list.append(types.InlineQueryResultArticle(
-                id="RUB",
-                title="RUB - Российский рубль",
-                description=str(valute_result),
-                input_message_content=types.InputTextMessageContent
-                (message_text="{} {} - это {} {}".format(current_valute_amount,
-                                                         current_valute_name, valute_result, "RUB"))))
+            if valute_result == 0:
+                answer_list.append(types.InlineQueryResultArticle(
+                    id="RUB",
+                    title="RUB - Российский рубль",
+                    description="Указанное значение слишком мало для конвертации",
+                    input_message_content=types.InputTextMessageContent
+                    (message_text="И зачем ты нажал на меня?")))
+            else:
+                answer_list.append(types.InlineQueryResultArticle(
+                    id="RUB",
+                    title="RUB - Российский рубль",
+                    description=valute_result,
+                    input_message_content=types.InputTextMessageContent
+                    (message_text="{} {} - это {} {}".format(current_valute_amount,
+                                                             current_valute_name, valute_result, "RUB"))))
 
         for child in self.root:
             if child.find("CharCode").text == current_valute_name:
@@ -110,13 +116,19 @@ class Interlayer:
             if valute_result >= 1:
                 if valute_result % int(valute_result) == 0:
                     valute_result = int(valute_result)
-            elif valute_result == 0:  # Rounding crutch
-                valute_result = 0
+            elif valute_result == 0:
+                answer_list.append(types.InlineQueryResultArticle(
+                    id=child.find("CharCode").text,
+                    title="{} - {}".format(child.find("CharCode").text, format(child.find("Name").text)),
+                    description="Указанное значение слишком мало для конвертации",
+                    input_message_content=types.InputTextMessageContent
+                    (message_text="И зачем ты нажал на меня?")))
+                continue
 
             answer_list.append(types.InlineQueryResultArticle(
                 id=child.find("CharCode").text,
                 title="{} - {}".format(child.find("CharCode").text, format(child.find("Name").text)),
-                description=str(valute_result),
+                description=valute_result,
                 input_message_content=types.InputTextMessageContent
                 (message_text="{} {} - это {} {}".format(current_valute_amount,
                                                          current_valute_name, valute_result,
