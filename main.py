@@ -9,8 +9,15 @@ import telebot
 
 
 def value_checker(amount):
+    throusand = 1
+    if amount[-1].lower() == "k" or amount[-1].lower() == "к":
+        throusand = 1000
+        amount = amount[:-1]
+    if amount[-1].lower() == "m" or amount[-1].lower() == "м":
+        throusand = 1000000
+        amount = amount[:-1]
     try:
-        return float(amount.replace(',', '.'))
+        return float(amount.replace(',', '.')) * throusand
     except (ValueError, TypeError, AttributeError):
         return None
 
@@ -48,9 +55,9 @@ def token():
 logger_init()
 rate_interlayer = interlayer.Interlayer()
 bot = telebot.TeleBot(token())
-version = "0.1"
-build = "4"
-logging.info("###CCURBOT {} build {} HAS BEEN STARTED###".format(version, build))
+version = "1.0"
+built_date = "17.11.2022"
+logging.info(f"###CCURBOT {version} (built date {built_date}) HAS BEEN STARTED###")
 
 
 def inline_error(inline_id, title, description):
@@ -84,7 +91,8 @@ def query_text(inline_query):
 
     if interlayer.extract_arg(inline_query.query, 0) is None:
         inline_error(inline_query.id, "Поле ввода пустое",
-                     "Требуется ввести 2 аргумента - количество, код исходной валюты")
+                     "Требуется ввести 2 (3) аргумента - количество, "
+                     "код исходной валюты (необязательно - код итоговой валюты)")
         return
 
     current_valute_amount = value_checker(interlayer.extract_arg(inline_query.query, 0))
@@ -94,12 +102,14 @@ def query_text(inline_query):
 
     if interlayer.extract_arg(inline_query.query, 1) is None:
         inline_error(inline_query.id, "Недостаточно аргументов",
-                     "Требуется ввести 2 аргумента - количество, код исходной валюты")
+                     "Требуется ввести 2 (3) аргумента - количество, код исходной валюты "
+                     "(необязательно - код итоговой валюты)")
         return
 
-    if interlayer.extract_arg(inline_query.query, 2) is not None:
+    if interlayer.extract_arg(inline_query.query, 3) is not None:
         inline_error(inline_query.id, "Аргументов слишком много",
-                     "Требуется ввести 2 аргумента - количество, код исходной валюты")
+                     "Требуется ввести 2 (3) аргумента - количество, "
+                     "код исходной валюты (необязательно - код итоговой валюты)")
         return
 
     current_valute_name = interlayer.extract_arg(inline_query.query, 1).upper()
@@ -118,7 +128,12 @@ def query_text(inline_query):
                      "Значение количества валюты не может быть меньше или равно 0")
         return
 
-    answer_list = rate_interlayer.valute_counter(current_valute_name, current_valute_amount)
+    try:
+        second_valute_name = interlayer.extract_arg(inline_query.query, 2).upper()
+    except AttributeError:
+        second_valute_name = ""
+
+    answer_list = rate_interlayer.valute_counter(current_valute_name, current_valute_amount, second_valute_name)
     bot.answer_inline_query(inline_query.id, answer_list)
 
 

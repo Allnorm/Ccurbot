@@ -11,7 +11,6 @@ from telebot import types
 
 
 def extract_arg(text, num):
-
     try:
         return str(text.split()[num])
     except IndexError:
@@ -19,12 +18,10 @@ def extract_arg(text, num):
 
 
 def rate_counter(current_valute_rate, current_valute_amount, next_valute_rate):
-
     return current_valute_rate / next_valute_rate * current_valute_amount
 
 
 class Interlayer:
-
     RATE_REPO = "http://www.cbr.ru/scripts/XML_daily.asp"
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y")
     current_valute_rate = 0
@@ -73,7 +70,7 @@ class Interlayer:
 
         return True
 
-    def valute_counter(self, current_valute_name, current_valute_amount):
+    def valute_counter(self, current_valute_name, current_valute_amount, second_valute_name):
 
         if datetime.datetime.now().strftime("%d-%m-%Y") != self.timestamp:
             self.update_rate()
@@ -81,7 +78,8 @@ class Interlayer:
 
         answer_list = []
 
-        if current_valute_name != "RUB":
+        if current_valute_name != "RUB" and second_valute_name in "RUB":
+
             valute_result = round(rate_counter(self.current_valute_rate, current_valute_amount, 1), 2)
 
             if valute_result >= 1:
@@ -105,7 +103,8 @@ class Interlayer:
                                                              current_valute_name, valute_result, "RUB"))))
 
         for child in self.root:
-            if child.find("CharCode").text == current_valute_name:
+            if child.find("CharCode").text == current_valute_name \
+                    or second_valute_name not in child.find("CharCode").text:
                 continue
 
             next_valute_rate = float(child.find("Value").text.replace(',', '.')) / int(child.find("Nominal")
@@ -116,6 +115,7 @@ class Interlayer:
             if valute_result >= 1:
                 if valute_result % int(valute_result) == 0:
                     valute_result = int(valute_result)
+
             elif valute_result == 0:
                 answer_list.append(types.InlineQueryResultArticle(
                     id=child.find("CharCode").text,
@@ -133,7 +133,8 @@ class Interlayer:
                 (message_text="{} {} - это {} {}".format(current_valute_amount,
                                                          current_valute_name, valute_result,
                                                          child.find("CharCode").text))))
-
+        if not answer_list:
+            return self.hint("Указанная валюта не найдена!", "Все существующие в базе данных валюты представлены ниже:")
         return answer_list
 
     def hint(self, title, description):
@@ -145,10 +146,10 @@ class Interlayer:
             input_message_content=types.InputTextMessageContent
             (message_text="И зачем ты нажал на меня?")),
             types.InlineQueryResultArticle(
-            id="RUB",
-            title="RUB",
-            description="Российский рубль",
-            input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))]
+                id="RUB",
+                title="RUB",
+                description="Российский рубль",
+                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))]
 
         for child in self.root:
             answer_list.append(types.InlineQueryResultArticle(
