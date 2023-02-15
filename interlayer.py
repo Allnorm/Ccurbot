@@ -2,160 +2,86 @@ import datetime
 import logging
 import sys
 import traceback
-import xml.etree.ElementTree
 
-import certifi
-import urllib3
-
-from telebot import types
-
-
-def extract_arg(text, num):
-    try:
-        return str(text.split()[num])
-    except IndexError:
-        pass
-
-
-def rate_counter(current_valute_rate, current_valute_amount, next_valute_rate):
-    return current_valute_rate / next_valute_rate * current_valute_amount
+import requests
 
 
 class Interlayer:
-    RATE_REPO = "http://www.cbr.ru/scripts/XML_daily.asp"
+    RATE_REPO = "https://www.cbr-xml-daily.ru/daily_json.js"
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y")
-    current_valute_rate = 0
+    current_currency_rate = 0
+    _currencies_list = []
+    _parsed_currencies = {}
 
     def __init__(self):
-        self.root = None
-        self.update_rate()
+
+        try:
+            self.update_rate()
+        except Exception as e:
+            logging.error("Impossible to download exchange rates! Bot will close.")
+            logging.error(str(e) + "\n" + traceback.format_exc())
+            sys.exit(1)
+
+    @staticmethod
+    def rate_counter(current_currency_rate, current_currency_amount, next_currency_rate):
+        return current_currency_rate / next_currency_rate * current_currency_amount
 
     def update_rate(self):
 
-        http = urllib3.PoolManager(cert_reqs="CERT_REQUIRED", ca_certs=certifi.where())
-        try:
-            r = http.request('GET', self.RATE_REPO)
-            logging.info("exchange rate file downloaded successful from repository " + self.RATE_REPO)
-        except Exception as e:
-            logging.error(
-                "impossible to download exchange rate file! You can try download it manually. Bot will close.")
-            logging.error(str(e) + "\n" + traceback.format_exc())
-            sys.exit(1)
-        if r.status != 200:
-            logging.error("impossible to download exchange rate file (http status = {})! "
-                          "You can try download it manually. Bot will close.".format(r.status))
-            sys.exit(1)
-        try:
-            f = open('rate.xml', 'wb')
-            f.write(r.data)
-            f.close()
-        except IOError as e:
-            logging.error("impossible to update exchange rate file! Bot will close")
-            logging.error(str(e) + "\n" + traceback.format_exc())
-            sys.exit(1)
+        curse_data = requests.get(self.RATE_REPO)
+        if curse_data.status_code != 200:
+            raise ConnectionRefusedError(f"HTTP status = {curse_data.status_code})!")
+        self._currencies_list = [i[1] for i in curse_data.json().get("Valute").items()]
+        self._parsed_currencies = {"RUB": "Российский рубль"}
+        self._parsed_currencies.update({vault.get("CharCode"): vault.get("Name") for vault in self._currencies_list})
+        logging.info("Currencies updated successful from repository " + self.RATE_REPO)
 
-        self.root = xml.etree.ElementTree.parse("rate.xml").getroot()
-        logging.info("rate.xml updated successful")
+    def is_currency_exist(self, current_currency_name):
 
-    def is_valute_exist(self, current_valute_name):
-
-        self.current_valute_rate = 1 if current_valute_name == "RUB" else 0
-        for child in self.root:
-            if child.find("CharCode").text.upper() == current_valute_name:
-                self.current_valute_rate = float(child.find("Value").
-                                                 text.replace(',', '.')) / int(child.find("Nominal")
-                                                                               .text.replace(',', '.'))
-        if self.current_valute_rate == 0:
+        self.current_currency_rate = 1 if current_currency_name == "RUB" else 0
+        for vault in self._currencies_list:
+            if vault.get("CharCode").upper() == current_currency_name:
+                self.current_currency_rate = float(vault.get("Value")) / int(vault.get("Nominal"))
+        if self.current_currency_rate == 0:
             return False
 
         return True
 
-    def valute_counter(self, current_valute_name, current_valute_amount, second_valute_name):
+    def currency_counter(self, current_currency_name, current_currency_amount, second_currency_name):
 
         if datetime.datetime.now().strftime("%d-%m-%Y") != self.timestamp:
-            self.update_rate()
+            try:
+                self.update_rate()
+            except Exception as e:
+                logging.error("Impossible to download exchange rates! I will use my cache!")
+                logging.error(str(e) + "\n" + traceback.format_exc())
             self.timestamp = datetime.datetime.now().strftime("%d-%m-%Y")
 
-        answer_list = []
+        answer_list = {}
 
-        if current_valute_name != "RUB" and second_valute_name in "RUB":
+        if current_currency_name != "RUB" and second_currency_name in "RUB":
+            currency_result = round(self.rate_counter(self.current_currency_rate, current_currency_amount, 1), 2)
 
-            valute_result = round(rate_counter(self.current_valute_rate, current_valute_amount, 1), 2)
+            if currency_result >= 1:
+                if currency_result % int(currency_result) == 0:
+                    currency_result = int(currency_result)
 
-            if valute_result >= 1:
-                if valute_result % int(valute_result) == 0:
-                    valute_result = int(valute_result)
+            answer_list.update({"RUB - Российский рубль": currency_result})
 
-            if valute_result == 0:
-                answer_list.append(types.InlineQueryResultArticle(
-                    id="RUB",
-                    title="RUB - Российский рубль",
-                    description="Указанное значение слишком мало для конвертации",
-                    input_message_content=types.InputTextMessageContent
-                    (message_text="И зачем ты нажал на меня?")))
-            else:
-                answer_list.append(types.InlineQueryResultArticle(
-                    id="RUB",
-                    title="RUB - Российский рубль",
-                    description=valute_result,
-                    input_message_content=types.InputTextMessageContent
-                    (message_text="{} {} - это {} {}".format(current_valute_amount,
-                                                             current_valute_name, valute_result, "RUB"))))
-
-        for child in self.root:
-            if child.find("CharCode").text == current_valute_name \
-                    or second_valute_name not in child.find("CharCode").text:
+        for vault in self._currencies_list:
+            if vault.get("CharCode") == current_currency_name or second_currency_name not in vault.get("CharCode"):
                 continue
+            next_currency_rate = float(vault.get("Value")) / int(vault.get("Nominal"))
+            currency_result = round(self.rate_counter(self.current_currency_rate,
+                                                      current_currency_amount, next_currency_rate), 2)
+            if currency_result >= 1:
+                if currency_result % int(currency_result) == 0:
+                    currency_result = int(currency_result)
 
-            next_valute_rate = float(child.find("Value").text.replace(',', '.')) / int(child.find("Nominal")
-                                                                                       .text.replace(',', '.'))
+            answer_list.update({f"{vault.get('CharCode')} - {vault.get('Name')}": currency_result})
 
-            valute_result = round(rate_counter(self.current_valute_rate,
-                                               current_valute_amount, next_valute_rate), 2)
-            if valute_result >= 1:
-                if valute_result % int(valute_result) == 0:
-                    valute_result = int(valute_result)
-
-            elif valute_result == 0:
-                answer_list.append(types.InlineQueryResultArticle(
-                    id=child.find("CharCode").text,
-                    title="{} - {}".format(child.find("CharCode").text, format(child.find("Name").text)),
-                    description="Указанное значение слишком мало для конвертации",
-                    input_message_content=types.InputTextMessageContent
-                    (message_text="И зачем ты нажал на меня?")))
-                continue
-
-            answer_list.append(types.InlineQueryResultArticle(
-                id=child.find("CharCode").text,
-                title="{} - {}".format(child.find("CharCode").text, format(child.find("Name").text)),
-                description=valute_result,
-                input_message_content=types.InputTextMessageContent
-                (message_text="{} {} - это {} {}".format(current_valute_amount,
-                                                         current_valute_name, valute_result,
-                                                         child.find("CharCode").text))))
-        if not answer_list:
-            return self.hint("Указанная валюта не найдена!", "Все существующие в базе данных валюты представлены ниже:")
         return answer_list
 
-    def hint(self, title, description):
-
-        answer_list = [types.InlineQueryResultArticle(
-            id="ERROR",
-            title=title,
-            description=description,
-            input_message_content=types.InputTextMessageContent
-            (message_text="И зачем ты нажал на меня?")),
-            types.InlineQueryResultArticle(
-                id="RUB",
-                title="RUB",
-                description="Российский рубль",
-                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))]
-
-        for child in self.root:
-            answer_list.append(types.InlineQueryResultArticle(
-                id=child.find("CharCode").text,
-                title=child.find("CharCode").text,
-                description=child.find("Name").text,
-                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?")))
-
-        return answer_list
+    @property
+    def parsed_currencies(self):
+        return self._parsed_currencies
