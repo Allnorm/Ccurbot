@@ -35,7 +35,6 @@ class Interlayer:
         http = urllib3.PoolManager(cert_reqs="CERT_REQUIRED", ca_certs=certifi.where())
         try:
             r = http.request('GET', self.RATE_REPO)
-            logging.info("exchange rate file downloaded successful from repository " + self.RATE_REPO)
         except Exception as e:
             logging.error(
                 "impossible to download exchange rate file! You can try download it manually. Bot will close.")
@@ -45,6 +44,7 @@ class Interlayer:
             logging.error("impossible to download exchange rate file (http status = {})! "
                           "You can try download it manually. Bot will close.".format(r.status))
             sys.exit(1)
+        logging.info("exchange rate file downloaded successful from repository " + self.RATE_REPO)
         try:
             f = open('rate.xml', 'wb')
             f.write(r.data)

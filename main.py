@@ -55,8 +55,8 @@ def token():
 logger_init()
 rate_interlayer = interlayer.Interlayer()
 bot = telebot.TeleBot(token())
-version = "1.0"
-built_date = "17.11.2022"
+version = "1.0.1"
+built_date = "29.03.2023"
 logging.info(f"###CCURBOT {version} (built date {built_date}) HAS BEEN STARTED###")
 
 
