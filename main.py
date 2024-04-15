@@ -77,7 +77,7 @@ def inline_result_list(current_currency_name, current_currency_amount, second_cu
 def send_welcome(message):
     if bot_name_checker(message):
         bot.reply_to(message, "Привет, этот бот поможет конвертировать валюты.\n"
-                              "Просто используйте его в режиме инлайн: `@ccur2bot 1200 RUB`,"
+                              "Просто используйте его в режиме инлайн: `@ccur2bot 1200 RUB`, "
                               "`@ccur2bot 12k usd byn` или `@ccur2bot 0,8m kzt EU`\n"
                               "/values - посмотреть список доступных валют.\n"
                               "Создано Allnorm'ом. Код проекта доступен по ссылке: "
