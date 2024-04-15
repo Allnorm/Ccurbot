@@ -11,8 +11,8 @@ class Utils:
         self.logger_init()
         self._token = self.set_token()
         version = "1.1"
-        built_date = "15.02.2022"
-        logging.info(f"###CCURBOT for SF {version} (built date {built_date}) HAS BEEN STARTED###")
+        built_date = "15.04.2024"
+        logging.info(f"###CCURBOT {version} (built date {built_date}) HAS BEEN STARTED###")
 
     @staticmethod
     def logger_init():
