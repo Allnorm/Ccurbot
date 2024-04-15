@@ -80,7 +80,7 @@ def send_welcome(message):
                               "Просто используйте его в режиме инлайн: `@ccur2bot 1200 RUB`,"
                               "`@ccur2bot 12k usd byn` или `@ccur2bot 0,8m kzt EU`\n"
                               "/values - посмотреть список доступных валют.\n"
-                              "Создано Allnorm'ом. Форк для SkillFactory, основной проект доступен по ссылке: "
+                              "Создано Allnorm'ом. Код проекта доступен по ссылке: "
                               "https://github.com/Allnorm/Ccurbot", parse_mode="markdown")
 
 
