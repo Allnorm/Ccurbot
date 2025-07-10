@@ -42,18 +42,19 @@ def bot_name_checker(message):  # Crutch to prevent the bot from responding to o
 
 
 def inline_currencies_list(title, description):
-    return [types.InlineQueryResultArticle(
-        id="ERROR",
-        title=title,
-        description=description,
-        input_message_content=types.InputTextMessageContent
-        (message_text="И зачем ты нажал на меня?")), ] + \
-                  [types.InlineQueryResultArticle(
-                      id=key,
-                      title=key,
-                      description=value,
-                      input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))
-                      for key, value in rate_interlayer.parsed_currencies.items()]
+    return (
+            [types.InlineQueryResultArticle(
+                id="ERROR",
+                title=title,
+                description=description,
+                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))] +
+            [types.InlineQueryResultArticle(
+                id=key,
+                title=key,
+                description=value,
+                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))
+                for key, value in rate_interlayer.parsed_currencies.items()]
+    )
 
 
 def inline_result_list(current_currency_name, current_currency_amount, second_currency_name):
