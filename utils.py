@@ -10,8 +10,8 @@ class Utils:
     def __init__(self):
         self.logger_init()
         self._token = self.set_token()
-        version = "1.1"
-        built_date = "15.04.2024"
+        version = "2.0"
+        built_date = "11.07.2025"
         logging.info(f"###CCURBOT {version} (built date {built_date}) HAS BEEN STARTED###")
 
     @staticmethod

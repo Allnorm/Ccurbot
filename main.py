@@ -41,37 +41,75 @@ def bot_name_checker(message):  # Crutch to prevent the bot from responding to o
         return False
 
 
-def inline_currencies_list(title, description):
+def inline_currencies_list():
+    wallet_list = "\n".join([f'{key} - {value}' for key, value in rate_interlayer.parsed_currencies.items()])
     return (
             [types.InlineQueryResultArticle(
                 id="ERROR",
-                title=title,
-                description=description,
-                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))] +
-            [types.InlineQueryResultArticle(
-                id=key,
-                title=key,
-                description=value,
-                input_message_content=types.InputTextMessageContent(message_text="И зачем ты нажал на меня?"))
-                for key, value in rate_interlayer.parsed_currencies.items()]
+                title="Указанная валюта не найдена!",
+                description="Нажмите, чтобы получить список всех доступных валют",
+                input_message_content=types.InputTextMessageContent(
+                    message_text=f"Список всех доступных валют:\n{wallet_list}"))]
     )
 
 
 def inline_result_list(current_currency_name, current_currency_amount, second_currency_name):
 
     inline_list = []
+    all_values_text = f'{current_currency_amount} {current_currency_name} - это:\n'
+    formatted_amount = f"{current_currency_amount:,}".replace(",", " ")
     for key, value in rate_interlayer.currency_counter(current_currency_name,
                                                        current_currency_amount, second_currency_name).items():
-        message_text = f"{current_currency_amount} {current_currency_name} - это {value} {key.split()[0]}" \
+        value_text = f"{value:,}".replace(",", " ")
+        message_text = (f"{formatted_amount} {current_currency_name} "
+                        f"- это <code>{value_text}</code> {key.split()[0]}") \
             if value != 0 else "И зачем ты нажал на меня?"
-        value = value if value != 0 else "Указанное значение слишком мало для конвертации"
+        if value != 0:
+            emoji = '-'
+            transformed_value = value / current_currency_amount
+            if 0 < transformed_value < 0.7:
+                emoji = '🪙'
+            elif 0.7 <= transformed_value < 5:
+                emoji = '⚖️'
+            elif 5 <= transformed_value < 100:
+                emoji = '🗞'
+            elif 100 <= transformed_value < 500:
+                emoji = '🧻'
+            elif 500 <= transformed_value:
+                emoji = '⚰️'
+            all_values_text += f'{emoji} <code>{value_text}</code> {key}\n'
+        else:
+            value_text = "Указанное значение слишком мало для конвертации"
         inline_list.append(types.InlineQueryResultArticle(
-            id=key.split()[0],
+            id=f"{current_currency_amount}_{current_currency_name}_{value_text}_{key.split()[0]}",
             title=key,
-            description=value,
-            input_message_content=types.InputTextMessageContent(message_text=message_text)))
+            description=value_text,
+            input_message_content=types.InputTextMessageContent(message_text=message_text, parse_mode='html')))
 
-    return inline_list
+    if not second_currency_name:
+        return [types.InlineQueryResultArticle(
+            id=f'{current_currency_name}_{current_currency_amount}_NOT_SECOND',
+            title="Вторая валюта для конвертации не указана",
+            description=f"Нажмите, чтобы получить список всех курсов или введите название второй валюты",
+            input_message_content=types.InputTextMessageContent(message_text=all_values_text, parse_mode='html'))
+        ]
+    elif len(inline_list) > 50:
+        return [types.InlineQueryResultArticle(
+            id=f'{current_currency_name}_{current_currency_amount}_TOO_MUCH',
+            title="В списке слишком много валютных курсов",
+            description=f'Нажмите, чтобы получить список всех курсов или введите название второй валюты',
+            input_message_content=types.InputTextMessageContent(message_text=all_values_text, parse_mode='html'))]
+    elif len(inline_list) == 0:
+        return inline_currencies_list()
+    elif len(inline_list) == 1:
+        return inline_list
+    else:
+        return [types.InlineQueryResultArticle(
+            id=f'{current_currency_name}_{current_currency_amount}_FILTERED',
+            title="Список всех валютных курсов",
+            description=f"Нажмите, чтобы получить список всех курсов, соответствующих фильтру",
+            input_message_content=types.InputTextMessageContent(message_text=all_values_text, parse_mode='html'))
+        ] + inline_list
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -112,9 +150,7 @@ def query_text(inline_query):
 
     current_currency_name = utils.extract_arg(inline_query.query, 1).upper()
     if not rate_interlayer.is_currency_exist(current_currency_name):
-        bot.answer_inline_query(inline_query.id,
-                                inline_currencies_list("Указанная валюта не найдена!",
-                                                       "Все существующие в базе данных валюты представлены ниже:"))
+        bot.answer_inline_query(inline_query.id, inline_currencies_list())
         return
 
     if current_currency_amount >= 1:
@@ -132,9 +168,6 @@ def query_text(inline_query):
         second_currency_name = ""
 
     answer_list = inline_result_list(current_currency_name, current_currency_amount, second_currency_name)
-    if not answer_list:
-        answer_list = inline_currencies_list("Указанная валюта не найдена!",
-                                             "Все существующие в базе данных валюты представлены ниже:")
     bot.answer_inline_query(inline_query.id, answer_list)
 
 
